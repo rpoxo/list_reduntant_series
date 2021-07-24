@@ -8,6 +8,9 @@
 #   previous year: 1 per month
 #   older than 1 year: 1 per quarter
 
+# TODO: older than 1 year
+# TODO: accept patterns for backups
+
 import os
 import logging
 import argparse
@@ -38,9 +41,10 @@ def parse_filenames(path, reduntant):
             backups[name][year][month][day][dt] = fname
     return backups
 
+# NOTE: need refactoring, too much copypasta
 def filter_last(path, reduntant, daily_limit):
     '''
-        Will display backups with more than 3 files per day for current and previous month(starting from 1st)
+        Will return backups with more than {daily_limit} files per day starting from previous month 1st day
     '''
 
     today = datetime.combine(date.today(), time())
@@ -61,6 +65,9 @@ def filter_last(path, reduntant, daily_limit):
                             return(os.path.join(path, fname))
 
 def filter_older(path, reduntant, daily_limit, days):
+    '''
+        Will return backups with more than {daily_limit} files per day for backups older than {days} for this year
+    '''
     # NOTE: timedelta does not have month argument, as it needs to be datetime-aware for that
     td = timedelta(days=days)
     today = datetime.combine(date.today(), time())
