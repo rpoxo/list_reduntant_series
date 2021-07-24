@@ -13,7 +13,7 @@ import logging
 import argparse
 import re
 import datetime
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date, time
 
 pattern_date = r'(?P<name>.*)-(?P<day>\d\d)-(?P<month>\S{3})-(?P<year>\d\d\d\d)-(?P<hour>\d\d):(?P<minute>\d\d).*'
 
@@ -21,22 +21,67 @@ def parse_filenames(path):
     logging.debug(f'listing files in {path}')
     files = [item for item in os.listdir(path) if os.path.isfile(os.path.join(path, item))]
     backups = {}
-    for fpath in files:
-        logging.debug(f'testing {fpath}')
-        match = re.search(pattern_date, fpath)
+    for fname in files:
+        logging.debug(f'testing {fname}')
+        match = re.search(pattern_date, fname)
         if match:
             name, day, month, year, hour, minute = match.groups()
-            logging.info(f'Matched [{name}] {fpath}: {match.groups()}')
+            logging.info(f'Matched [{name}] {fname}: {match.groups()}')
             dt = datetime.strptime(''.join([day, month, year, hour, minute]), '%d%b%Y%H%M')
             if name not in backups.keys(): backups[name] = {}
-            backups[name][dt] = fpath
+            if year not in backups[name].keys(): backups[name][year] = {}
+            if month not in backups[name][year].keys(): backups[name][year][month] = {}
+            if day not in backups[name][year][month].keys(): backups[name][year][month][day] = {}
 
-def filter_current(path):
-    parse_filenames(path)
+            backups[name][year][month][day][dt] = fname
+    return backups
+
+def filter_last(path):
+    '''
+        Will display backups with more than 3 files per day for current and previous month(starting from 1st)
+    '''
+    daily_limit = 3
+
+    today = datetime.combine(date.today(), time())
+    last_month = today.replace(month=today.month-1)
+    last_month_start = last_month.replace(day=1)
+
+    backups = parse_filenames(path)
+
+    for name, years in backups.items():
+        for year, months in years.items():
+            for month, days in months.items():
+                for day, datetimes in days.items():
+                    filtered = [fname for dt, fname in datetimes.items() if dt > last_month_start]
+                    if len(filtered) > daily_limit:
+                        logging.warning(f'more than {daily_limit} backups found for {year}-{month}-{day}')
+                        for fname in filtered[daily_limit:]:
+                            print(os.path.join(path, fname))
+
+def filter_older(path, daily_limit, days):
+    # NOTE: timedelta does not have month argument, as it needs to be datetime-aware for that
+    td = timedelta(days=days)
+    today = datetime.combine(date.today(), time())
+    this_year = today.replace(month=1)
+    this_year_start = this_year.replace(day=1)
+
+    backups = parse_filenames(path)
+
+    for name, years in backups.items():
+        for year, months in years.items():
+            for month, days in months.items():
+                for day, datetimes in days.items():
+                    filtered = [fname for dt, fname in datetimes.items() if dt > this_year and dt+td < datetime.combine(date.today(), time())]
+                    if len(filtered) > daily_limit:
+                        logging.warning(f'more than {daily_limit} backups found for {year}-{month}-{day}')
+                        for fname in filtered[daily_limit:]:
+                            print(os.path.join(path, fname))
     
 
 def main(args):
-    if args.current: filter_current(args.dir)
+    if args.last: filter_last(args.dir)
+    if args.older: filter_older(args.dir, 2, 60)
+    if args.old: filter_older(args.dir, 1, 90)
 
 def setup_logging(args):
     handlers = []
@@ -72,7 +117,11 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("dir", help="Path to directory with backups")
     parser.add_argument("-v", "--verbose", help="Set verbosity level", action='count', default=1)
-    parser.add_argument("--current", help="List backups reduntant backups from current 2 month", action='store_true')
+    parser.add_argument("--last", help="List reduntant backups from last 2 month", action='store_true')
+    parser.add_argument("--older", help="List reduntant backups older 2 month this year", action='store_true')
+    parser.add_argument("--old", help="List reduntant backups older 3 month this year", action='store_true')
+    parser.add_argument("--veryold", help="List reduntant backupsfrom previous year", action='store_true')
+    parser.add_argument("--oldest", help="List reduntant backups older than year", action='store_true')
     args = parser.parse_args()
 
     return args
