@@ -11,11 +11,14 @@
 import os
 import logging
 import argparse
+import re
 
+def filter_current_month(path):
 
 
 def main(args):
-    pass
+    if args.policy-current:
+        print(1)
 
 def setup_logging(args):
     handlers = []
@@ -51,6 +54,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("dir", help="Path to directory with backups")
     parser.add_argument("-v", "--verbose", help="Set verbosity level", action='count', default=1)
+    parser.add_argument("--policy-current", help="List backups reduntant backups from current 2 month", action='store_true')
     args = parser.parse_args()
 
     return args
