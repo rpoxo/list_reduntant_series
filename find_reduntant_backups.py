@@ -10,6 +10,7 @@
 
 # TODO: older than 1 year
 # TODO: accept patterns for backups
+# TODO: improve args
 
 import os
 import logging
