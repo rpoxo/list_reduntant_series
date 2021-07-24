@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 # Script for finding reduntant backups
+# Gotsko Nikita 2021-07-24
 #
 # Policy:
 #   current and previous month: 3 per day
