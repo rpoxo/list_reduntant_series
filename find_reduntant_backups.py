@@ -91,6 +91,9 @@ def main(args):
         reduntant.append(filter_older(args.dir, reduntant, 2, 60))
         reduntant.append(filter_older(args.dir, reduntant, 1, 90))
     
+    # filter None returns
+    reduntant = [fpath for fpath in reduntant if fpath not None]
+
     logging.debug(reduntant)
     logging.debug(set(reduntant))
     for fpath in set(reduntant):
