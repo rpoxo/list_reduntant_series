@@ -102,6 +102,15 @@ def parse_timedelta(string):
 def parse_datetimes(args):
     if not args.end:
         args.end = datetime.now()
+    else:
+        try:
+            dt = datetime.strptime(args.end, '%Y-%m-%d')
+            args.end = dt
+        except ValueError as err:
+            logging.warning(f'failed to parse end date using ISO 8601 format(YYYY-MM-DD), "{args.end}"')
+            td = parse_timedelta(args.end)
+            args.end = datetime.now() - td
+            logging.info(f'relative end date {td} is {args.end}')
 
     try:
         dt = datetime.strptime(args.start, '%Y-%m-%d')
@@ -152,9 +161,9 @@ def parse_args():
     parser.add_argument("-v", "--verbose", help="Set verbosity level", action='count', default=1)
     parser.add_argument("--amount", help="Amount of backups to be kept per --period(default 1d), default is 1", type=int, default=1)
     parser.add_argument("--period", help="Timedelta for counting --amount of backups, default is 1d", default="1d")
-    parser.add_argument("--start", help="Start date, accepts ISO 8601 format(YYYY-MM-DD) or relative ", default="30d")
-    parser.add_argument("--first-day", help="Move --start date to 1st day of month", action='store_true')
-    parser.add_argument("--end", help="End date, in ISO 8601 format(YYYY-MM-DD), default now()")
+    parser.add_argument("--start", help="Start date, accepts ISO 8601 format(YYYY-MM-DD) or relative shortcuts(0w0d0h0m0s), default is 30d old", default="30d")
+    #parser.add_argument("--first-day", help="Move --start date to 1st day of month", action='store_true')
+    parser.add_argument("--end", help="End date, in ISO 8601 format(YYYY-MM-DD), or relative shortcuts(0w0d0h0m0s), default now()")
     args = parser.parse_args()
 
     return args
