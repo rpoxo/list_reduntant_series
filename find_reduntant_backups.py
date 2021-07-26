@@ -30,8 +30,8 @@ class BackupItem:
     }
 
     def __init__(self, path):
-        self._path = path
-        self._dt = self._get_date(os.path.basename(path))
+        self.path = path
+        self.dt = self._get_date(os.path.basename(path))
         self.name = self._get_name(os.path.basename(path))
     
     def _get_date(cls, fname):
@@ -51,20 +51,35 @@ class BackupItem:
 def find_reduntant(series, start, end, period, amount):
     reduntant = []
     filtered = [item for item in series if start < item.dt < end]
-    current = end
-    while current > start:
+    current = start
+    while current < end:
         current_filtered = [item for item in filtered if current < item.dt < current + period]
-        reduntant.append(current_filtered[amount:])
-        current = current - period
+        reduntant.extend(current_filtered[amount:])
+        for item in current_filtered[amount:]:
+            logging.debug(f'found reduntant item [{item.name}]{item.path}, {current} < {item.dt} < {current + period}')
+        current = current + period
+    
+    return reduntant
 
 def find_series(path):
     logging.debug(f'listing items in {path}')
     items = [BackupItem(os.path.join(path, name)) for name in os.listdir(path) \
         if any([re.search(pattern, name) for pattern in BackupItem.patterns.keys()])]
     
+    return items
+    
 def main(args):
     parse_datetimes(args) # arg by ref, modifying state of args
-    find_series(args.dir)
+    series = find_series(args.dir)
+    backups = {}
+    for item in series:
+        if item.name not in backups.keys(): backups[item.name] = []
+        backups[item.name].append(item)
+    
+    for name, items in backups.items():
+        reduntant = find_reduntant(items, args.start, args.end, args.period, args.amount)
+        for item in reduntant:
+            print(item.path)
 
 def parse_timedelta(string):
     '''
@@ -96,6 +111,8 @@ def parse_datetimes(args):
         td = parse_timedelta(args.start)
         args.start = datetime.now() - td
         logging.info(f'relative start date {td} is {args.start}')
+    
+    args.period = parse_timedelta(args.period)
 
 
 def setup_logging(args):
@@ -132,10 +149,10 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("dir", help="Path to directory with backups")
     parser.add_argument("-v", "--verbose", help="Set verbosity level", action='count', default=1)
-    parser.add_argument("--amount", help="Amount of backups to be kept per period(default 1 day), default is 1", type=int, default=1)
+    parser.add_argument("--amount", help="Amount of backups to be kept per --period(default 1d), default is 1", type=int, default=1)
     parser.add_argument("--period", help="Timedelta for counting --amount of backups, default is 1d", default="1d")
     parser.add_argument("--start", help="Start date, accepts ISO 8601 format(YYYY-MM-DD) or relative ", default="30d")
-    parser.add_argument("--first", help="Move --start date to 1st day of month", action='store_true')
+    parser.add_argument("--first-day", help="Move --start date to 1st day of month", action='store_true')
     parser.add_argument("--end", help="End date, in ISO 8601 format(YYYY-MM-DD), default now()")
     args = parser.parse_args()
 
