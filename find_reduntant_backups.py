@@ -20,28 +20,37 @@ import re
 import datetime
 from datetime import datetime, timedelta, date, time
 
-pattern_date = r'(?P<name>.*)-(?P<day>\d\d)-(?P<month>\S{3})-(?P<year>\d\d\d\d)-(?P<hour>\d\d):(?P<minute>\d\d).*'
 
-def parse_filenames(path, reduntant):
-    logging.debug(f'listing files in {path}, excluding {reduntant}')
-    files = [item for item in os.listdir(path) if os.path.isfile(os.path.join(path, item))]
-    files = [fname for fname in files if os.path.join(path, fname) not in reduntant]
-    logging.debug(f'files = {files}')
-    backups = {}
-    for fname in files:
-        logging.debug(f'testing {fname}')
-        match = re.search(pattern_date, fname)
-        if match:
-            name, day, month, year, hour, minute = match.groups()
-            logging.info(f'Matched [{name}] {fname}: {match.groups()}')
-            dt = datetime.strptime(''.join([day, month, year, hour, minute]), '%d%b%Y%H%M')
-            if name not in backups.keys(): backups[name] = {}
-            if year not in backups[name].keys(): backups[name][year] = {}
-            if month not in backups[name][year].keys(): backups[name][year][month] = {}
-            if day not in backups[name][year][month].keys(): backups[name][year][month][day] = {}
+class BackupItem:
+    # regex as key, 1989 C as value
+    # https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes
+    patterns = {
+        r'(?P<day>\d{2})-(?P<month>\S{3})-(?P<year>\d{4})-(?P<hour>\d{2}):(?P<minute>\d{2})' : '%d-%b-%Y-%H:%M',
+        r'(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})_(?P<hour>\d{2})-(?P<minute>\d{2})' : '%Y-%m-%d_%H-%M',
+    }
 
-            backups[name][year][month][day][dt] = fname
-    return backups
+    def __init__(self, path):
+        self._path = path
+        self._dt = self._get_date(os.path.basename(path))
+        self.name = self._get_name(os.path.basename(path))
+    
+    def _get_date(cls, fname):
+        for pattern in cls.patterns:
+            match = re.search(pattern, fname)
+            if match:
+                dt = datetime.strptime(match.group(), cls.patterns[pattern])
+                logging.debug(f'Parsed date for {fname}: {dt}')
+                return dt
+        raise NotImplementedError
+    
+    def _get_name(self, fname):
+        delimeter = '-'
+        return fname.split(delimeter)[0]
+
+def parse_items(path):
+    logging.debug(f'listing items in {path}')
+    items = [BackupItem(os.path.join(path, name)) for name in os.listdir(path) \
+        if any([re.search(pattern, name) for pattern in BackupItem.patterns.keys()])]
 
 # NOTE: need refactoring, too much copypasta
 def filter_last(path, reduntant, daily_limit):
@@ -91,22 +100,33 @@ def filter_older(path, reduntant, daily_limit, days):
     
 
 def main(args):
-    reduntant = []
-    if args.last: reduntant.append(filter_last(args.dir, reduntant, 3))
-    elif args.older: reduntant.append(filter_older(args.dir, reduntant, 2, 60))
-    elif args.old: reduntant.append(filter_older(args.dir, reduntant, 1, 90))
-    else:
-        reduntant.append(filter_last(args.dir, reduntant, 3))
-        reduntant.append(filter_older(args.dir, reduntant, 2, 60))
-        reduntant.append(filter_older(args.dir, reduntant, 1, 90))
-    
-    # filter None returns
-    reduntant = [fpath for fpath in reduntant if fpath is not None]
+    parse_periods(args)
+    parse_items(args.dir)
 
-    logging.debug(reduntant)
-    logging.debug(set(reduntant))
-    for fpath in set(reduntant):
-        print(fpath)
+def parse_periods(args):
+    if not args.end:
+        args.end = datetime.now()
+    
+    try:
+        dt = datetime.strptime(args.start, '%Y-%m-%d')
+        args.start = dt
+    except ValueError as err:
+        logging.warning(f'failed to parse start date using ISO 8601 format(YYYY-MM-DD), "{args.start}"')
+        # courtecy of virhilo
+        # https://stackoverflow.com/questions/4628122/how-to-construct-a-timedelta-object-from-a-simple-string
+        match = re.match(r'((?P<weeks>\d+?)w)?((?P<days>\d+?)d)?((?P<hours>\d+?)h)?((?P<minutes>\d+?)m)?((?P<seconds>\d+?)s)?', args.start)
+        if not match:
+            raise parser.error(f'failed to parse relative --start date, "{args.start}"')
+
+        parts = match.groupdict()
+        time_params = {}
+        for name, param in parts.items():
+            if param:
+                time_params[name] = int(param)
+        td = timedelta(**time_params)
+        args.start = datetime.now() - td
+        logging.info(f'relative start date {td} is {args.start}')
+
 
 def setup_logging(args):
     handlers = []
@@ -142,11 +162,11 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("dir", help="Path to directory with backups")
     parser.add_argument("-v", "--verbose", help="Set verbosity level", action='count', default=1)
-    parser.add_argument("--last", help="List reduntant backups from last 2 month", action='store_true')
-    parser.add_argument("--older", help="List reduntant backups older 2 month this year", action='store_true')
-    parser.add_argument("--old", help="List reduntant backups older 3 month this year", action='store_true')
-    parser.add_argument("--veryold", help="List reduntant backupsfrom previous year", action='store_true')
-    parser.add_argument("--oldest", help="List reduntant backups older than year", action='store_true')
+    parser.add_argument("--amount", help="Amount of backups to be kept per period(default 1 day), default is 1", type=int, default=1)
+    parser.add_argument("--period", help="Timedelta for counting --amount of backups, accepts 1989 C format(1w1d1h1m1s1f), default is 1 day", default="1d")
+    parser.add_argument("--start", help="Start date, accepts ISO 8601 format(YYYY-MM-DD) or relative ", default="30d")
+    parser.add_argument("--first", help="Move --start date to 1st day of month", action='store_true')
+    parser.add_argument("--end", help="End date, in ISO 8601 format(YYYY-MM-DD), default now()")
     args = parser.parse_args()
 
     return args
