@@ -109,9 +109,8 @@ def parse_datetimes(args):
     except ValueError as err:
         logging.warning(f'failed to parse start date using ISO 8601 format(YYYY-MM-DD), "{args.start}"')
         td = parse_timedelta(args.start)
-        args.start = datetime.now() - td
         # TODO: make as argument
-        args.start.replace(hour=0, minute=0, second=0)
+        args.start = datetime.now().replace(hour=0, minute=0, second=0) - td
         logging.info(f'relative start date {td} is {args.start}')
     
     args.period = parse_timedelta(args.period)
