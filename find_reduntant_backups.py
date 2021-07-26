@@ -2,12 +2,20 @@
 # Script for finding reduntant backups
 # Gotsko Nikita 2021-07-24
 #
-# Policy:
-#   current and previous month: 3 per day
-#   current year, older than 2 month: 2 per day
-#   current year, older than 3 month: 1 per day
-#   previous year: 1 per month
-#   older than 1 year: 1 per quarter
+# Scans provided directory for items with names that contains date patterns
+# Displays path to items that does not follow policy
+#
+# Policy examples:
+#   current and previous month, 3 per day:
+#       ./find_reduntant_backups.py --since 2021-05-01 --amount 3 /path/to/backups
+#   current year, older than 2 month, 2 per day:
+#       ./find_reduntant_backups.py --since 2021-01-01 --to 60d --amount 2 /path/to/backups
+#   current year, older than 3 month, 1 per day:
+#       ./find_reduntant_backups.py --since 2021-01-01 --to 90d --amount 2 /path/to/backups
+#   previous year, 1 per month
+#       ./find_reduntant_backups.py --since 2020-01-01 --to 2021-01-01 --amount 1 --period 30d /path/to/backups
+#   older than 1 year, 1 per quarter
+#       ./find_reduntant_backups.py --to 365d --amount 1 --period 90d /path/to/backups
 
 # TODO: older than 1 year
 # TODO: accept patterns for backups
