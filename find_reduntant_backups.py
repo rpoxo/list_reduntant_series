@@ -100,15 +100,18 @@ def parse_timedelta(string):
     return timedelta(**time_params)
 
 def parse_datetimes(args):
-    try:
-        dt = datetime.strptime(args.since, '%Y-%m-%d')
-        args.since = dt
-    except ValueError as err:
-        logging.warning(f'failed to parse start date using ISO 8601 format(YYYY-MM-DD), "{args.since}"')
-        td = parse_timedelta(args.since)
-        # TODO: make as argument
-        args.since = datetime.now().replace(hour=0, minute=0, second=0) - td
-        logging.info(f'relative start date {td} is {args.since}')
+    if not args.since:
+        args.since = datetime.fromtimestamp(0)
+    else:
+        try:
+            dt = datetime.strptime(args.since, '%Y-%m-%d')
+            args.since = dt
+        except ValueError as err:
+            logging.warning(f'failed to parse start date using ISO 8601 format(YYYY-MM-DD), "{args.since}"')
+            td = parse_timedelta(args.since)
+            # TODO: make as argument
+            args.since = datetime.now().replace(hour=0, minute=0, second=0) - td
+            logging.info(f'relative start date {td} is {args.since}')
 
     if not args.to:
         args.to = datetime.now()
@@ -161,7 +164,7 @@ def parse_args():
     parser.add_argument("-v", "--verbose", help="Set verbosity level", action='count', default=1)
     parser.add_argument("--amount", help="Amount of backups to be kept per --period(default 1d), default is 1", type=int, default=1)
     parser.add_argument("--period", help="Timedelta for counting --amount of backups, default is 1d", default="1d")
-    parser.add_argument("--since", help="Start date, accepts ISO 8601 format(YYYY-MM-DD) or relative shortcuts(0w0d0h0m0s), default is 30d old", default="30d")
+    parser.add_argument("--since", help="Start date, accepts ISO 8601 format(YYYY-MM-DD) or relative shortcuts(0w0d0h0m0s), default since epoch 0")
     #parser.add_argument("--first-day", help="Move --start date to 1st day of month", action='store_true')
     parser.add_argument("--to", help="End date, in ISO 8601 format(YYYY-MM-DD), or relative shortcuts(0w0d0h0m0s), default now()")
     args = parser.parse_args()
