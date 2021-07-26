@@ -100,27 +100,27 @@ def parse_timedelta(string):
     return timedelta(**time_params)
 
 def parse_datetimes(args):
-    if not args.end:
-        args.end = datetime.now()
+    try:
+        dt = datetime.strptime(args.since, '%Y-%m-%d')
+        args.since = dt
+    except ValueError as err:
+        logging.warning(f'failed to parse start date using ISO 8601 format(YYYY-MM-DD), "{args.since}"')
+        td = parse_timedelta(args.since)
+        # TODO: make as argument
+        args.since = datetime.now().replace(hour=0, minute=0, second=0) - td
+        logging.info(f'relative start date {td} is {args.since}')
+
+    if not args.to:
+        args.to = datetime.now()
     else:
         try:
-            dt = datetime.strptime(args.end, '%Y-%m-%d')
-            args.end = dt
+            dt = datetime.strptime(args.to, '%Y-%m-%d')
+            args.to = dt
         except ValueError as err:
-            logging.warning(f'failed to parse end date using ISO 8601 format(YYYY-MM-DD), "{args.end}"')
-            td = parse_timedelta(args.end)
-            args.end = datetime.now() - td
-            logging.info(f'relative end date {td} is {args.end}')
-
-    try:
-        dt = datetime.strptime(args.start, '%Y-%m-%d')
-        args.start = dt
-    except ValueError as err:
-        logging.warning(f'failed to parse start date using ISO 8601 format(YYYY-MM-DD), "{args.start}"')
-        td = parse_timedelta(args.start)
-        # TODO: make as argument
-        args.start = datetime.now().replace(hour=0, minute=0, second=0) - td
-        logging.info(f'relative start date {td} is {args.start}')
+            logging.warning(f'failed to parse end date using ISO 8601 format(YYYY-MM-DD), "{args.to}"')
+            td = parse_timedelta(args.to)
+            args.to = datetime.now() - td
+            logging.info(f'relative end date {td} is {args.to}')
     
     args.period = parse_timedelta(args.period)
 
