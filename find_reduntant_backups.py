@@ -18,7 +18,7 @@ import logging
 import argparse
 import re
 import datetime
-from datetime import datetime, timedelta, date, time
+from datetime import datetime, timedelta
 
 
 class BackupItem:
@@ -46,6 +46,16 @@ class BackupItem:
     def _get_name(self, fname):
         delimeter = '-'
         return fname.split(delimeter)[0]
+
+
+def find_reduntant(series, start, end, period, amount):
+    reduntant = []
+    filtered = [item for item in series if start < item.dt < end]
+    current = end
+    while current > start:
+        current_filtered = [item for item in filtered if current < item.dt < current + period]
+        reduntant.append(current_filtered[amount:])
+        current = current - period
 
 def find_series(path):
     logging.debug(f'listing items in {path}')
@@ -123,7 +133,7 @@ def parse_args():
     parser.add_argument("dir", help="Path to directory with backups")
     parser.add_argument("-v", "--verbose", help="Set verbosity level", action='count', default=1)
     parser.add_argument("--amount", help="Amount of backups to be kept per period(default 1 day), default is 1", type=int, default=1)
-    parser.add_argument("--period", help="Timedelta for counting --amount of backups, accepts 1989 C format(1w1d1h1m1s1f), default is 1 day", default="1d")
+    parser.add_argument("--period", help="Timedelta for counting --amount of backups, default is 1d", default="1d")
     parser.add_argument("--start", help="Start date, accepts ISO 8601 format(YYYY-MM-DD) or relative ", default="30d")
     parser.add_argument("--first", help="Move --start date to 1st day of month", action='store_true')
     parser.add_argument("--end", help="End date, in ISO 8601 format(YYYY-MM-DD), default now()")
