@@ -77,7 +77,7 @@ def main(args):
         backups[item.name].append(item)
     
     for name, items in backups.items():
-        reduntant = find_reduntant(items, args.start, args.end, args.period, args.amount)
+        reduntant = find_reduntant(items, args.since, args.to, args.period, args.amount)
         for item in reduntant:
             print(item.path)
 
