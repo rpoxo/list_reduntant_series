@@ -47,83 +47,43 @@ class BackupItem:
         delimeter = '-'
         return fname.split(delimeter)[0]
 
-def parse_items(path):
+def find_series(path):
     logging.debug(f'listing items in {path}')
     items = [BackupItem(os.path.join(path, name)) for name in os.listdir(path) \
         if any([re.search(pattern, name) for pattern in BackupItem.patterns.keys()])]
-
-# NOTE: need refactoring, too much copypasta
-def filter_last(path, reduntant, daily_limit):
-    '''
-        Will return backups with more than {daily_limit} files per day starting from previous month 1st day
-    '''
-
-    today = datetime.combine(date.today(), time())
-    last_month = today.replace(month=today.month-1)
-    last_month_start = last_month.replace(day=1)
-
-    backups = parse_filenames(path, reduntant)
-
-    for name, years in backups.items():
-        for year, months in years.items():
-            for month, days in months.items():
-                for day, datetimes in days.items():
-                    filtered = [fname for dt, fname in datetimes.items() if dt > last_month_start]
-                    if len(filtered) > daily_limit:
-                        logging.warning(f'more than {daily_limit} backups found for {year}-{month}-{day}')
-                        for fname in filtered[daily_limit:]:
-                            logging.info(f'marking {fname} as reduntant')
-                            return(os.path.join(path, fname))
-
-def filter_older(path, reduntant, daily_limit, days):
-    '''
-        Will return backups with more than {daily_limit} files per day for backups older than {days} for this year
-    '''
-    # NOTE: timedelta does not have month argument, as it needs to be datetime-aware for that
-    td = timedelta(days=days)
-    today = datetime.combine(date.today(), time())
-    this_year = today.replace(month=1)
-    this_year_start = this_year.replace(day=1)
-
-    backups = parse_filenames(path, reduntant)
-
-    for name, years in backups.items():
-        for year, months in years.items():
-            for month, days in months.items():
-                for day, datetimes in days.items():
-                    filtered = [fname for dt, fname in datetimes.items() if dt > this_year and dt < datetime.combine(date.today(), time()) - td]
-                    if len(filtered) > daily_limit:
-                        logging.warning(f'more than {daily_limit} backups found for {year}-{month}-{day}')
-                        for fname in filtered[daily_limit:]:
-                            logging.info(f'marking {fname} as reduntant, older than {datetime.combine(date.today(), time())} - {td} = {datetime.combine(date.today(), time()) - td}')
-                            return(os.path.join(path, fname))
     
-
 def main(args):
-    parse_periods(args)
-    parse_items(args.dir)
+    parse_datetimes(args) # arg by ref, modifying state of args
+    find_series(args.dir)
 
-def parse_periods(args):
+def parse_timedelta(string):
+    '''
+        courtecy of virhilo
+        https://stackoverflow.com/questions/4628122/how-to-construct-a-timedelta-object-from-a-simple-string
+
+        returns timedelta from string
+    '''
+    match = re.match(r'((?P<weeks>\d+?)w)?((?P<days>\d+?)d)?((?P<hours>\d+?)h)?((?P<minutes>\d+?)m)?((?P<seconds>\d+?)s)?', string)
+    if not match:
+        raise ValueError(f'failed to parse relative timedelta string, "{string}"')
+
+    parts = match.groupdict()
+    time_params = {}
+    for name, param in parts.items():
+        if param:
+            time_params[name] = int(param)
+    return timedelta(**time_params)
+
+def parse_datetimes(args):
     if not args.end:
         args.end = datetime.now()
-    
+
     try:
         dt = datetime.strptime(args.start, '%Y-%m-%d')
         args.start = dt
     except ValueError as err:
         logging.warning(f'failed to parse start date using ISO 8601 format(YYYY-MM-DD), "{args.start}"')
-        # courtecy of virhilo
-        # https://stackoverflow.com/questions/4628122/how-to-construct-a-timedelta-object-from-a-simple-string
-        match = re.match(r'((?P<weeks>\d+?)w)?((?P<days>\d+?)d)?((?P<hours>\d+?)h)?((?P<minutes>\d+?)m)?((?P<seconds>\d+?)s)?', args.start)
-        if not match:
-            raise parser.error(f'failed to parse relative --start date, "{args.start}"')
-
-        parts = match.groupdict()
-        time_params = {}
-        for name, param in parts.items():
-            if param:
-                time_params[name] = int(param)
-        td = timedelta(**time_params)
+        td = parse_timedelta(args.start)
         args.start = datetime.now() - td
         logging.info(f'relative start date {td} is {args.start}')
 
