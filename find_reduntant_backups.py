@@ -17,10 +17,6 @@
 #   older than 1 year, 1 per quarter
 #       ./find_reduntant_backups.py --to 365d --amount 1 --period 90d /path/to/backups
 
-# TODO: older than 1 year
-# TODO: accept patterns for backups
-# TODO: improve args
-
 import os
 import logging
 import argparse
@@ -117,7 +113,6 @@ def parse_datetimes(args):
         except ValueError as err:
             logging.warning(f'failed to parse start date using ISO 8601 format(YYYY-MM-DD), "{args.since}"')
             td = parse_timedelta(args.since)
-            # TODO: make as argument
             args.since = datetime.now().replace(hour=0, minute=0, second=0) - td
             logging.info(f'relative start date {td} is {args.since}')
 
