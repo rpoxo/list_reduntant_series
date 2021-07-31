@@ -7,15 +7,15 @@
 #
 # Policy examples:
 #   current and previous month, 3 per day:
-#       ./find_reduntant_backups.py --since 2021-05-01 --amount 3 /path/to/backups
+#       ./find_reduntant_backups.py --since 2021-05-01 --limit 3 /path/to/backups
 #   current year, older than 2 month, 2 per day:
-#       ./find_reduntant_backups.py --since 2021-01-01 --to 60d --amount 2 /path/to/backups
+#       ./find_reduntant_backups.py --since 2021-01-01 --to 60d --limit 2 /path/to/backups
 #   current year, older than 3 month, 1 per day:
-#       ./find_reduntant_backups.py --since 2021-01-01 --to 90d --amount 2 /path/to/backups
+#       ./find_reduntant_backups.py --since 2021-01-01 --to 90d --limit 2 /path/to/backups
 #   previous year, 1 per month
-#       ./find_reduntant_backups.py --since 2020-01-01 --to 2021-01-01 --amount 1 --period 30d /path/to/backups
+#       ./find_reduntant_backups.py --since 2020-01-01 --to 2021-01-01 --limit 1 --period 30d /path/to/backups
 #   older than 1 year, 1 per quarter
-#       ./find_reduntant_backups.py --to 365d --amount 1 --period 90d /path/to/backups
+#       ./find_reduntant_backups.py --to 365d --limit 1 --period 90d /path/to/backups
 
 #TODO: strategy to list reduntant files at even times
 
@@ -83,7 +83,7 @@ def main(args):
         backups[item.name].append(item)
     
     for name, items in backups.items():
-        reduntant = find_reduntant(items, args.since, args.before, args.period, args.amount)
+        reduntant = find_reduntant(items, args.since, args.before, args.period, args.limit)
         for item in reduntant:
             print(item.path)
 
@@ -167,8 +167,8 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("dir", help="Path to directory with backups")
     parser.add_argument("-v", "--verbose", help="Set verbosity level", action='count', default=1)
-    parser.add_argument("--amount", help="Amount of backups to be kept per --period(default 1d), default is 1", type=int, default=1)
-    parser.add_argument("--period", help="Timedelta for counting --amount of backups, default is 1d", default="1d")
+    parser.add_argument("--limit", help="Amount of backups to be kept per --period(default 1d), default is 1", type=int, default=1)
+    parser.add_argument("--period", help="Timedelta for counting --limit of backups, default is 1d", default="1d")
     parser.add_argument("--since", help="Start date, accepts ISO 8601 format(YYYY-MM-DD) or relative shortcuts(0w0d0h0m0s), default since epoch 0")
     #parser.add_argument("--first-day", help="Move --start date to 1st day of month", action='store_true')
     parser.add_argument("--before", help="End date, in ISO 8601 format(YYYY-MM-DD), or relative shortcuts(0w0d0h0m0s), default now()")
