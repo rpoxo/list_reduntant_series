@@ -56,14 +56,14 @@ class BackupItem:
         return fname.split(delimeter)[0]
 
 
-def find_reduntant(series, start, end, period, amount):
+def find_reduntant(series, start, end, period, limit):
     reduntant = []
     filtered = [item for item in series if start < item.dt < end]
     current = start
     while current < end:
         current_filtered = [item for item in filtered if current < item.dt < current + period]
-        reduntant.extend(current_filtered[amount:])
-        for item in current_filtered[amount:]:
+        reduntant.extend(current_filtered[limit:])
+        for item in current_filtered[limit:]:
             logging.debug(f'found reduntant item [{item.name}]{item.path}, {current} < {item.dt} < {current + period}')
         current = current + period
     
