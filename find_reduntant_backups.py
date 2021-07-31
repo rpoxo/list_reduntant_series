@@ -3,7 +3,7 @@
 # Gotsko Nikita 2021-07-24
 #
 # Scans provided directory for items with names that contains date patterns
-# Displays path to items that does not follow policy
+# Displays path to items that considered reduntant
 #
 # Policy examples:
 #   current and previous month, 3 per day:
@@ -16,6 +16,8 @@
 #       ./find_reduntant_backups.py --since 2020-01-01 --to 2021-01-01 --amount 1 --period 30d /path/to/backups
 #   older than 1 year, 1 per quarter
 #       ./find_reduntant_backups.py --to 365d --amount 1 --period 90d /path/to/backups
+
+#TODO: strategy to list reduntant files at even times
 
 import os
 import logging
