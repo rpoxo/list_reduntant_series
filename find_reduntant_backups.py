@@ -83,7 +83,7 @@ def main(args):
         backups[item.name].append(item)
     
     for name, items in backups.items():
-        reduntant = find_reduntant(items, args.since, args.to, args.period, args.amount)
+        reduntant = find_reduntant(items, args.since, args.before, args.period, args.amount)
         for item in reduntant:
             print(item.path)
 
@@ -118,17 +118,17 @@ def parse_datetimes(args):
             args.since = datetime.now().replace(hour=0, minute=0, second=0) - td
             logging.info(f'relative start date {td} is {args.since}')
 
-    if not args.to:
-        args.to = datetime.now()
+    if not args.before:
+        args.before = datetime.now()
     else:
         try:
-            dt = datetime.strptime(args.to, '%Y-%m-%d')
-            args.to = dt
+            dt = datetime.strptime(args.before, '%Y-%m-%d')
+            args.before = dt
         except ValueError as err:
-            logging.warning(f'failed to parse end date using ISO 8601 format(YYYY-MM-DD), "{args.to}"')
-            td = parse_timedelta(args.to)
-            args.to = datetime.now() - td
-            logging.info(f'relative end date {td} is {args.to}')
+            logging.warning(f'failed to parse end date using ISO 8601 format(YYYY-MM-DD), "{args.before}"')
+            td = parse_timedelta(args.before)
+            args.before = datetime.now() - td
+            logging.info(f'relative end date {td} is {args.before}')
     
     args.period = parse_timedelta(args.period)
 
@@ -171,7 +171,7 @@ def parse_args():
     parser.add_argument("--period", help="Timedelta for counting --amount of backups, default is 1d", default="1d")
     parser.add_argument("--since", help="Start date, accepts ISO 8601 format(YYYY-MM-DD) or relative shortcuts(0w0d0h0m0s), default since epoch 0")
     #parser.add_argument("--first-day", help="Move --start date to 1st day of month", action='store_true')
-    parser.add_argument("--to", help="End date, in ISO 8601 format(YYYY-MM-DD), or relative shortcuts(0w0d0h0m0s), default now()")
+    parser.add_argument("--before", help="End date, in ISO 8601 format(YYYY-MM-DD), or relative shortcuts(0w0d0h0m0s), default now()")
     args = parser.parse_args()
 
     return args
